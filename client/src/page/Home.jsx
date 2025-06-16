@@ -1,5 +1,6 @@
 import Hero from "../assets/first.jpeg";
 import About from "./About";
+import StatsOverview from "./StatsOverview";
 function Home() {
   return (
     <div className="">
@@ -33,6 +34,7 @@ function Home() {
       {/* </div> */}
 
       <About />
+      <StatsOverview />
       </div>
       
   );
