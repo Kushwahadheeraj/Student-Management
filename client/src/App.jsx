@@ -4,9 +4,8 @@ import { SignIn } from "./components/SignIn";
 import { SignUp } from "./components/SignUp";
 import Header from "./components/Header";
 import Home from "./page/Home";
+import About from "./page/About";
 import Footer from "./components/Footer";
-
-
 
 function App() {
   return (
@@ -16,11 +15,12 @@ function App() {
           <Header />
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
             <Route path="/sign-in" element={<SignIn />} />
             <Route path="/sign-up" element={<SignUp />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          <Footer/>
+          <Footer />
         </div>
       </Router>
     </ClerkProviderWrapper>
