@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LineChartComponent, BarChartComponent } from "@/components/ui/chart";
 import { 
   Users, 
   BookOpen, 
@@ -9,7 +10,9 @@ import {
   Plus,
   Search,
   Settings,
-  Menu
+  Menu,
+  TrendingUp,
+  Target
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
@@ -17,6 +20,33 @@ import Sidebar from "@/components/Sidebar";
 function Dashboard() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Mock data for dashboard graphs
+  const contestHistoryData = [
+    { date: "2024-01-15", rating: 1450 },
+    { date: "2024-01-16", rating: 1460 },
+    { date: "2024-01-17", rating: 1445 },
+    { date: "2024-01-18", rating: 1470 },
+    { date: "2024-01-19", rating: 1485 },
+    { date: "2024-01-20", rating: 1500 },
+    { date: "2024-01-21", rating: 1495 },
+    { date: "2024-01-22", rating: 1510 },
+    { date: "2024-01-23", rating: 1525 },
+    { date: "2024-01-24", rating: 1530 }
+  ];
+
+  const problemsSolvedData = [
+    { date: "2024-01-15", problems: 5 },
+    { date: "2024-01-16", problems: 3 },
+    { date: "2024-01-17", problems: 7 },
+    { date: "2024-01-18", problems: 4 },
+    { date: "2024-01-19", problems: 6 },
+    { date: "2024-01-20", problems: 8 },
+    { date: "2024-01-21", problems: 2 },
+    { date: "2024-01-22", problems: 5 },
+    { date: "2024-01-23", problems: 9 },
+    { date: "2024-01-24", problems: 4 }
+  ];
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -89,6 +119,51 @@ function Dashboard() {
               <CardContent>
                 <div className="text-2xl font-bold">3.45</div>
                 <p className="text-xs text-muted-foreground">+0.1 from last semester</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Dashboard Graphs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Contest History Graph */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  Contest History
+                </CardTitle>
+                <CardDescription>
+                  Rating progression over recent contests
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <LineChartComponent 
+                  data={contestHistoryData} 
+                  xKey="date" 
+                  yKey="rating" 
+                  color="#3b82f6"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Problems Solved Graph */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-green-600" />
+                  Problems Solved
+                </CardTitle>
+                <CardDescription>
+                  Daily problem solving activity
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BarChartComponent 
+                  data={problemsSolvedData} 
+                  xKey="date" 
+                  yKey="problems" 
+                  color="#10b981"
+                />
               </CardContent>
             </Card>
           </div>

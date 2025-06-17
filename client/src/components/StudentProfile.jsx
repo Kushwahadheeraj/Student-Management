@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LineChartComponent, BarChartComponent, RatingDistributionChart } from "@/components/ui/chart";
 import { 
   ArrowLeft, 
   Menu,
@@ -24,7 +25,7 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
   const [contestFilter, setContestFilter] = useState("30");
   const [problemFilter, setProblemFilter] = useState("30");
 
-  // Mock contest history data
+  // Mock contest history data with more detailed information
   const contestHistory = [
     {
       id: 1,
@@ -34,7 +35,9 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
       ratingChange: +25,
       problemsSolved: 3,
       totalProblems: 5,
-      newRating: 1475
+      newRating: 1475,
+      unsolvedProblems: ["D", "E"],
+      contestId: 123
     },
     {
       id: 2,
@@ -44,7 +47,9 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
       ratingChange: -15,
       problemsSolved: 2,
       totalProblems: 5,
-      newRating: 1450
+      newRating: 1450,
+      unsolvedProblems: ["C", "D", "E"],
+      contestId: 122
     },
     {
       id: 3,
@@ -54,11 +59,37 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
       ratingChange: +50,
       problemsSolved: 4,
       totalProblems: 5,
-      newRating: 1465
+      newRating: 1465,
+      unsolvedProblems: ["E"],
+      contestId: 121
+    },
+    {
+      id: 4,
+      name: "Codeforces Round #120",
+      date: "2024-01-12",
+      rank: 89,
+      ratingChange: -30,
+      problemsSolved: 1,
+      totalProblems: 5,
+      newRating: 1415,
+      unsolvedProblems: ["B", "C", "D", "E"],
+      contestId: 120
+    },
+    {
+      id: 5,
+      name: "Codeforces Round #119",
+      date: "2024-01-10",
+      rank: 34,
+      ratingChange: +35,
+      problemsSolved: 3,
+      totalProblems: 5,
+      newRating: 1445,
+      unsolvedProblems: ["D", "E"],
+      contestId: 119
     }
   ];
 
-  // Mock problem solving data
+  // Mock problem solving data with more detailed information
   const problemSolvingData = {
     totalProblemsSolved: 156,
     averageRating: 1350,
@@ -66,7 +97,8 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
     mostDifficultProblem: {
       name: "Problem D - Complex Algorithm",
       rating: 1800,
-      contest: "Codeforces Round #120"
+      contest: "Codeforces Round #120",
+      date: "2024-01-12"
     },
     ratingDistribution: [
       { range: "800-1000", count: 25 },
@@ -75,8 +107,75 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
       { range: "1400-1600", count: 28 },
       { range: "1600-1800", count: 15 },
       { range: "1800+", count: 8 }
+    ],
+    dailySubmissions: [
+      { date: "2024-01-01", submissions: 5 },
+      { date: "2024-01-02", submissions: 3 },
+      { date: "2024-01-03", submissions: 7 },
+      { date: "2024-01-04", submissions: 2 },
+      { date: "2024-01-05", submissions: 6 },
+      { date: "2024-01-06", submissions: 4 },
+      { date: "2024-01-07", submissions: 8 },
+      { date: "2024-01-08", submissions: 1 },
+      { date: "2024-01-09", submissions: 5 },
+      { date: "2024-01-10", submissions: 9 },
+      { date: "2024-01-11", submissions: 3 },
+      { date: "2024-01-12", submissions: 6 },
+      { date: "2024-01-13", submissions: 2 },
+      { date: "2024-01-14", submissions: 4 },
+      { date: "2024-01-15", submissions: 7 },
+      { date: "2024-01-16", submissions: 5 },
+      { date: "2024-01-17", submissions: 3 },
+      { date: "2024-01-18", submissions: 8 },
+      { date: "2024-01-19", submissions: 4 },
+      { date: "2024-01-20", submissions: 6 }
     ]
   };
+
+  // Filter contest history based on selected period
+  const filteredContestHistory = useMemo(() => {
+    const days = parseInt(contestFilter);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    return contestHistory.filter(contest => {
+      const contestDate = new Date(contest.date);
+      return contestDate >= cutoffDate;
+    });
+  }, [contestFilter]);
+
+  // Filter problem solving data based on selected period
+  const filteredProblemData = useMemo(() => {
+    const days = parseInt(problemFilter);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    // Filter daily submissions
+    const filteredSubmissions = problemSolvingData.dailySubmissions.filter(day => {
+      const dayDate = new Date(day.date);
+      return dayDate >= cutoffDate;
+    });
+    
+    // Calculate totals for filtered period
+    const totalSubmissions = filteredSubmissions.reduce((sum, day) => sum + day.submissions, 0);
+    const averagePerDay = days > 0 ? (totalSubmissions / days).toFixed(1) : 0;
+    
+    return {
+      ...problemSolvingData,
+      dailySubmissions: filteredSubmissions,
+      totalProblemsSolved: totalSubmissions,
+      averageProblemsPerDay: parseFloat(averagePerDay)
+    };
+  }, [problemFilter]);
+
+  // Prepare rating graph data
+  const ratingGraphData = useMemo(() => {
+    return filteredContestHistory.map(contest => ({
+      date: contest.date,
+      rating: contest.newRating,
+      change: contest.ratingChange
+    }));
+  }, [filteredContestHistory]);
 
   const getRatingColor = (rating) => {
     if (rating >= 2400) return "text-red-600";
@@ -227,56 +326,76 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
                   </Select>
                 </div>
 
-                {/* Rating Graph Placeholder */}
+                {/* Rating Graph */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5" />
-                      Rating Progress
+                      Rating Progress ({contestFilter} days)
                     </CardTitle>
                     <CardDescription>
                       Rating changes over the selected period
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <p className="text-gray-500">Rating graph will be displayed here</p>
-                    </div>
+                    {ratingGraphData.length > 0 ? (
+                      <LineChartComponent 
+                        data={ratingGraphData} 
+                        xKey="date" 
+                        yKey="rating" 
+                        color="#3b82f6"
+                      />
+                    ) : (
+                      <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <p className="text-gray-500">No contest data available for selected period</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
                 {/* Contest List */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Contests</CardTitle>
+                    <CardTitle>Recent Contests ({filteredContestHistory.length})</CardTitle>
                     <CardDescription>
                       Contest performance in the selected period
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {contestHistory.map((contest) => (
-                        <div key={contest.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-medium">{contest.name}</h3>
-                              {getRankBadge(contest.rank)}
+                      {filteredContestHistory.length > 0 ? (
+                        filteredContestHistory.map((contest) => (
+                          <div key={contest.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-medium">{contest.name}</h3>
+                                {getRankBadge(contest.rank)}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                                <span>{contest.date}</span>
+                                <span>Problems: {contest.problemsSolved}/{contest.totalProblems}</span>
+                              </div>
+                              {contest.unsolvedProblems.length > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  Unsolved: {contest.unsolvedProblems.join(", ")}
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span>{contest.date}</span>
-                              <span>Problems: {contest.problemsSolved}/{contest.totalProblems}</span>
+                            <div className="text-right">
+                              <div className={`text-lg font-bold ${getRatingChangeColor(contest.ratingChange)}`}>
+                                {contest.ratingChange > 0 ? '+' : ''}{contest.ratingChange}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                → {contest.newRating}
+                              </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className={`text-lg font-bold ${getRatingChangeColor(contest.ratingChange)}`}>
-                              {contest.ratingChange > 0 ? '+' : ''}{contest.ratingChange}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              → {contest.newRating}
-                            </div>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          No contests found in the selected period.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -307,7 +426,7 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
                       <Target className="h-4 w-4 text-blue-600" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{problemSolvingData.totalProblemsSolved}</div>
+                      <div className="text-2xl font-bold">{filteredProblemData.totalProblemsSolved}</div>
                       <p className="text-xs text-muted-foreground">Solved in selected period</p>
                     </CardContent>
                   </Card>
@@ -329,7 +448,7 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
                       <Activity className="h-4 w-4 text-orange-600" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{problemSolvingData.averageProblemsPerDay}</div>
+                      <div className="text-2xl font-bold">{filteredProblemData.averageProblemsPerDay}</div>
                       <p className="text-xs text-muted-foreground">Average daily activity</p>
                     </CardContent>
                   </Card>
@@ -357,35 +476,31 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {problemSolvingData.ratingDistribution.map((item) => (
-                        <div key={item.range} className="flex items-center gap-4">
-                          <div className="w-20 text-sm font-medium">{item.range}</div>
-                          <div className="flex-1 bg-gray-200 rounded-full h-4">
-                            <div 
-                              className="bg-blue-600 h-4 rounded-full"
-                              style={{ width: `${(item.count / problemSolvingData.totalProblemsSolved) * 100}%` }}
-                            ></div>
-                          </div>
-                          <div className="w-12 text-sm text-gray-600">{item.count}</div>
-                        </div>
-                      ))}
-                    </div>
+                    <RatingDistributionChart data={problemSolvingData.ratingDistribution} />
                   </CardContent>
                 </Card>
 
-                {/* Submission Heatmap Placeholder */}
+                {/* Submission Heatmap */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Submission Heatmap</CardTitle>
+                    <CardTitle>Submission Activity ({problemFilter} days)</CardTitle>
                     <CardDescription>
-                      Daily submission activity over the past year
+                      Daily submission activity over the selected period
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <p className="text-gray-500">Submission heatmap will be displayed here</p>
-                    </div>
+                    {filteredProblemData.dailySubmissions.length > 0 ? (
+                      <BarChartComponent 
+                        data={filteredProblemData.dailySubmissions} 
+                        xKey="date" 
+                        yKey="submissions" 
+                        color="#10b981"
+                      />
+                    ) : (
+                      <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <p className="text-gray-500">No submission data available for selected period</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
