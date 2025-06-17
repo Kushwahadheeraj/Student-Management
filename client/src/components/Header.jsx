@@ -40,7 +40,7 @@ const Header = () => {
                 onClick={() => navigate('/dashboard')}
               >
                 Dashboard
-              </Button>
+              </Button> 
             </>
           )}
           
