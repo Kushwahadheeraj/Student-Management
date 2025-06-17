@@ -8,6 +8,7 @@ import About from "./page/About";
 import Dashboard from "./page/Dashboard";
 import AddStudent from "./page/AddStudent";
 import AllData from "./page/AllData";
+import Settings from "./page/Settings";
 import Footer from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -15,7 +16,8 @@ function AppContent() {
   const location = useLocation();
   const isDashboardPage = location.pathname.startsWith('/dashboard') || 
                          location.pathname.startsWith('/add-student') || 
-                         location.pathname.startsWith('/all-data');
+                         location.pathname.startsWith('/all-data') ||
+                         location.pathname.startsWith('/settings');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
@@ -37,6 +39,11 @@ function AppContent() {
           <Route path="/all-data" element={
             <ProtectedRoute>
               <AllData />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           } />
           <Route path="/sign-in" element={<SignIn />} />

@@ -23,7 +23,8 @@ function AddStudent() {
     course: "",
     enrollmentDate: "",
     guardianName: "",
-    guardianPhone: ""
+    guardianPhone: "",
+    codeforcesHandle: ""
   });
 
   const handleInputChange = (field, value) => {
@@ -155,7 +156,7 @@ function AddStudent() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-50 bg-gray-50">
                         <SelectItem value="male">Male</SelectItem>
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
@@ -185,7 +186,7 @@ function AddStudent() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select course" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-50 bg-gray-50">
                         <SelectItem value="computer-science">Computer Science</SelectItem>
                         <SelectItem value="engineering">Engineering</SelectItem>
                         <SelectItem value="business">Business Administration</SelectItem>
@@ -206,6 +207,20 @@ function AddStudent() {
                       required
                     />
                   </div>
+                </div>
+
+                {/* Codeforces Information */}
+                <div className="space-y-2">
+                  <Label htmlFor="codeforcesHandle">Codeforces Handle</Label>
+                  <Input
+                    id="codeforcesHandle"
+                    value={formData.codeforcesHandle}
+                    onChange={(e) => handleInputChange('codeforcesHandle', e.target.value)}
+                    placeholder="Enter Codeforces username (optional)"
+                  />
+                  <p className="text-xs text-gray-500">
+                    This will be used to track competitive programming progress
+                  </p>
                 </div>
 
                 {/* Guardian Information */}

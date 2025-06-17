@@ -8,7 +8,8 @@ import {
   Database, 
   LogOut,
   Menu,
-  X
+  X,
+  Settings
 } from "lucide-react";
 
 const Sidebar = ({ isOpen, onToggle }) => {
@@ -38,6 +39,12 @@ const Sidebar = ({ isOpen, onToggle }) => {
       label: "All Data",
       path: "/all-data",
       onClick: () => navigate('/all-data')
+    },
+    {
+      icon: Settings,
+      label: "Settings",
+      path: "/settings",
+      onClick: () => navigate('/settings')
     }
   ];
 
