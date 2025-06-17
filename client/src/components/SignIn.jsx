@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 export function SignIn() {
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  const from = location.state?.from?.pathname || "/dashboard";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">

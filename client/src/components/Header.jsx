@@ -26,13 +26,22 @@ const Header = () => {
         {/* Navigation */}
         <nav className="flex items-center space-x-6">
           {isSignedIn && (
-            <Button 
-              variant="ghost" 
-              className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-              onClick={() => navigate('/')}
-            >
-              Home
-            </Button>
+            <>
+              <Button 
+                variant="ghost" 
+                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                onClick={() => navigate('/')}
+              >
+                Home
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                onClick={() => navigate('/dashboard')}
+              >
+                Dashboard
+              </Button>
+            </>
           )}
           
           {isSignedIn ? (
