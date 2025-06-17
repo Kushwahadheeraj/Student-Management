@@ -11,15 +11,17 @@ function App() {
   return (
     <ClerkProviderWrapper>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
           <Header />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/sign-in" element={<SignIn />} />
-            <Route path="/sign-up" element={<SignUp />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <main >
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/sign-in" element={<SignIn />} />
+              <Route path="/sign-up" element={<SignUp />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
           <Footer />
         </div>
       </Router>

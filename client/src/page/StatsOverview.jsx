@@ -24,11 +24,11 @@ const StatsOverview = () => {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-100 shadow-lg rounded-3xl p-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-gray-800">
+    <div className="backdrop-blur-sm bg-white/30 shadow-lg rounded-3xl p-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-gray-800">
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+          className="group relative overflow-hidden bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
         >
           <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-16 -mt-16 group-hover:opacity-20 transition-opacity duration-300`} />
           <div className="relative z-10">
@@ -36,7 +36,7 @@ const StatsOverview = () => {
               {stat.icon}
             </div>
             <div className="mt-4">
-              <p className="text-sm font-medium text-gray-500 tracking-wide">{stat.label}</p>
+              <p className="text-sm font-medium text-gray-600 tracking-wide">{stat.label}</p>
               <p className="text-2xl font-bold mt-1 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                 {stat.value}
               </p>
