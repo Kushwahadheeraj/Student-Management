@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeft, 
-  Menu, 
+  Menu,
   TrendingUp, 
   Calendar, 
   Target, 
@@ -102,14 +102,14 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={onToggleSidebar} />
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <div className="bg-white border-b px-4 py-3 flex items-center justify-between lg:hidden">
+        {/* Top Bar for Mobile */}
+        <div className="bg-white border-b px-4 py-3 flex items-center justify-between lg:hidden flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -122,7 +122,7 @@ function StudentProfile({ student, onBack, sidebarOpen, onToggleSidebar }) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-4">
