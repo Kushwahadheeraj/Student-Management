@@ -11,7 +11,10 @@ import {
   UserPlus, 
   Menu,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  XCircle,
+  Loader2,
+  ExternalLink
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
@@ -19,6 +22,11 @@ import Sidebar from "@/components/Sidebar";
 function AddStudent() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [handleValid, setHandleValid] = useState(null);
+  
+  // Form state
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -33,48 +41,150 @@ function AddStudent() {
     emergencyPhone: "",
     notes: ""
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null);
+  
+  // Validation state
+  const [errors, setErrors] = useState({});
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitStatus(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
+    // If handle hasn't been verified, verify it first
+    if (handleValid === null) {
+      await verifyHandle();
+      if (!handleValid) {
+        return;
+      }
+    }
+
+    setLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log("Student data to submit:", formData);
-      
-      // Success
-      setSubmitStatus("success");
-      setTimeout(() => {
+      const response = await fetch('http://localhost:5000/api/students', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Student added successfully!');
         navigate('/all-data');
-      }, 2000);
-      
+      } else {
+        // Handle specific error cases
+        if (data.message.includes('email')) {
+          setErrors(prev => ({ ...prev, email: data.message }));
+        } else if (data.message.includes('Codeforces handle')) {
+          setErrors(prev => ({ ...prev, codeforcesHandle: data.message }));
+        } else {
+          alert(data.message);
+        }
+      }
     } catch (error) {
-      console.error("Error submitting student:", error);
-      setSubmitStatus("error");
+      console.error('Error adding student:', error);
+      alert('Failed to add student. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const isFormValid = () => {
-    return formData.firstName && 
-           formData.lastName && 
-           formData.email && 
-           formData.phone && 
-           formData.course && 
-           formData.enrollmentDate;
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Name validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters long';
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Phone validation
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Please enter a valid phone number';
+    }
+
+    // Codeforces handle validation
+    if (!formData.codeforcesHandle.trim()) {
+      newErrors.codeforcesHandle = 'Codeforces handle is required';
+    } else if (formData.codeforcesHandle.trim().length < 3) {
+      newErrors.codeforcesHandle = 'Codeforces handle must be at least 3 characters long';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const verifyHandle = async () => {
+    if (!formData.codeforcesHandle.trim()) {
+      setErrors(prev => ({ ...prev, codeforcesHandle: 'Codeforces handle is required' }));
+      return;
+    }
+
+    setVerifying(true);
+    setHandleValid(null);
+
+    try {
+      const response = await fetch(`https://codeforces.com/api/user.info?handles=${formData.codeforcesHandle.trim()}`);
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.result.length > 0) {
+        setHandleValid(true);
+        setErrors(prev => ({ ...prev, codeforcesHandle: '' }));
+      } else {
+        setHandleValid(false);
+        setErrors(prev => ({ 
+          ...prev, 
+          codeforcesHandle: 'Invalid Codeforces handle or handle does not exist' 
+        }));
+      }
+    } catch (error) {
+      console.error('Error verifying handle:', error);
+      setHandleValid(false);
+      setErrors(prev => ({ 
+        ...prev, 
+        codeforcesHandle: 'Failed to verify handle. Please try again.' 
+      }));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleHandleBlur = () => {
+    if (formData.codeforcesHandle.trim() && handleValid === null) {
+      verifyHandle();
+    }
   };
 
   return (
@@ -115,26 +225,6 @@ function AddStudent() {
             <p className="text-gray-600">Register a new student in the system</p>
           </div>
 
-          {/* Submit Status */}
-          {submitStatus && (
-            <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
-              submitStatus === "success" 
-                ? "bg-green-50 border border-green-200 text-green-800" 
-                : "bg-red-50 border border-red-200 text-red-800"
-            }`}>
-              {submitStatus === "success" ? (
-                <CheckCircle className="h-5 w-5" />
-              ) : (
-                <AlertCircle className="h-5 w-5" />
-              )}
-              <span>
-                {submitStatus === "success" 
-                  ? "Student registered successfully! Redirecting..." 
-                  : "Error registering student. Please try again."}
-              </span>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal Information */}
             <Card>
@@ -157,7 +247,11 @@ function AddStudent() {
                       onChange={(e) => handleInputChange("firstName", e.target.value)}
                       placeholder="Enter first name"
                       required
+                      className={errors.firstName ? 'border-red-500' : ''}
                     />
+                    {errors.firstName && (
+                      <p className="text-sm text-red-600">{errors.firstName}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name *</Label>
@@ -181,7 +275,11 @@ function AddStudent() {
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       placeholder="Enter email address"
                       required
+                      className={errors.email ? 'border-red-500' : ''}
                     />
+                    {errors.email && (
+                      <p className="text-sm text-red-600">{errors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number *</Label>
@@ -191,7 +289,11 @@ function AddStudent() {
                       onChange={(e) => handleInputChange("phone", e.target.value)}
                       placeholder="Enter phone number"
                       required
+                      className={errors.phone ? 'border-red-500' : ''}
                     />
+                    {errors.phone && (
+                      <p className="text-sm text-red-600">{errors.phone}</p>
+                    )}
                   </div>
                 </div>
                 
@@ -248,13 +350,54 @@ function AddStudent() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="codeforcesHandle">Codeforces Handle</Label>
-                  <Input
-                    id="codeforcesHandle"
-                    value={formData.codeforcesHandle}
-                    onChange={(e) => handleInputChange("codeforcesHandle", e.target.value)}
-                    placeholder="Enter Codeforces username (optional)"
-                  />
+                  <Label htmlFor="codeforcesHandle">Codeforces Handle *</Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Input
+                        id="codeforcesHandle"
+                        value={formData.codeforcesHandle}
+                        onChange={(e) => handleInputChange("codeforcesHandle", e.target.value)}
+                        onBlur={handleHandleBlur}
+                        placeholder="Enter Codeforces username (optional)"
+                        className={`${errors.codeforcesHandle ? 'border-red-500' : ''} ${
+                          handleValid === true ? 'border-green-500' : 
+                          handleValid === false ? 'border-red-500' : ''
+                        }`}
+                      />
+                      {verifying && (
+                        <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                      )}
+                      {handleValid === true && !verifying && (
+                        <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-600" />
+                      )}
+                      {handleValid === false && !verifying && (
+                        <XCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-600" />
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={verifyHandle}
+                      disabled={verifying || !formData.codeforcesHandle.trim()}
+                      className="flex items-center gap-2"
+                    >
+                      {verifying ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ExternalLink className="h-4 w-4" />
+                      )}
+                      Verify
+                    </Button>
+                  </div>
+                  {errors.codeforcesHandle && (
+                    <p className="text-sm text-red-600">{errors.codeforcesHandle}</p>
+                  )}
+                  {handleValid === true && (
+                    <p className="text-sm text-green-600">✓ Valid Codeforces handle</p>
+                  )}
+                  {formData.codeforcesHandle && !errors.codeforcesHandle && handleValid === null && (
+                    <p className="text-sm text-gray-500">Click verify to check if the handle exists</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -330,16 +473,16 @@ function AddStudent() {
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/dashboard')}
-                disabled={isSubmitting}
+                disabled={loading || verifying}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={!isFormValid() || isSubmitting}
+                disabled={!validateForm() || loading || verifying}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {isSubmitting ? (
+                {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Registering...

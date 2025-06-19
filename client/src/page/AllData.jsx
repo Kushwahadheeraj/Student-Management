@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,118 +17,170 @@ import {
   Mail,
   Bell,
   BellOff,
-  ExternalLink
+  ExternalLink,
+  Plus,
+  MoreHorizontal,
+  Calendar,
+  Clock
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
+import StudentProfile from "@/components/StudentProfile";
 
 function AllData() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCourse, setFilterCourse] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
 
-  // Mock data with Codeforces information - replace with actual data from your backend
-  const [students] = useState([
-    {
-      id: 1,
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@email.com",
-      phone: "+1 234-567-8900",
-      course: "Computer Science",
-      enrollmentDate: "2024-01-15",
-      status: "Active",
-      codeforcesHandle: "john_doe_cp",
-      currentRating: 1450,
-      maxRating: 1650,
-      lastUpdated: "2024-01-20T10:30:00Z",
-      reminderEmailsSent: 2,
-      emailRemindersEnabled: true,
-      lastSubmissionDate: "2024-01-18T15:45:00Z"
-    },
-    {
-      id: 2,
-      firstName: "Jane",
-      lastName: "Smith",
-      email: "jane.smith@email.com",
-      phone: "+1 234-567-8901",
-      course: "Engineering",
-      enrollmentDate: "2024-02-01",
-      status: "Active",
-      codeforcesHandle: "jane_smith",
-      currentRating: 2100,
-      maxRating: 2200,
-      lastUpdated: "2024-01-20T11:15:00Z",
-      reminderEmailsSent: 0,
-      emailRemindersEnabled: true,
-      lastSubmissionDate: "2024-01-20T09:30:00Z"
-    },
-    {
-      id: 3,
-      firstName: "Mike",
-      lastName: "Johnson",
-      email: "mike.johnson@email.com",
-      phone: "+1 234-567-8902",
-      course: "Business Administration",
-      enrollmentDate: "2024-01-20",
-      status: "Inactive",
-      codeforcesHandle: "mike_j",
-      currentRating: 800,
-      maxRating: 1200,
-      lastUpdated: "2024-01-19T14:20:00Z",
-      reminderEmailsSent: 5,
-      emailRemindersEnabled: false,
-      lastSubmissionDate: "2024-01-13T16:20:00Z"
-    },
-    {
-      id: 4,
-      firstName: "Sarah",
-      lastName: "Williams",
-      email: "sarah.williams@email.com",
-      phone: "+1 234-567-8903",
-      course: "Arts & Humanities",
-      enrollmentDate: "2024-02-10",
-      status: "Active",
-      codeforcesHandle: "sarah_w",
-      currentRating: 1600,
-      maxRating: 1700,
-      lastUpdated: "2024-01-20T12:45:00Z",
-      reminderEmailsSent: 1,
-      emailRemindersEnabled: true,
-      lastSubmissionDate: "2024-01-19T20:15:00Z"
-    },
-    {
-      id: 5,
-      firstName: "David",
-      lastName: "Brown",
-      email: "david.brown@email.com",
-      phone: "+1 234-567-8904",
-      course: "Computer Science",
-      enrollmentDate: "2024-01-25",
-      status: "Active",
-      codeforcesHandle: "david_brown_cp",
-      currentRating: 1800,
-      maxRating: 1900,
-      lastUpdated: "2024-01-20T13:30:00Z",
-      reminderEmailsSent: 0,
-      emailRemindersEnabled: true,
-      lastSubmissionDate: "2024-01-20T14:45:00Z"
+  // Fetch students from API
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm,
+        sortBy,
+        sortOrder
+      });
+
+      const response = await fetch(`http://localhost:5000/api/students?${params}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setStudents(data.data);
+        setTotalPages(data.pagination.pages);
+      } else {
+        setError(data.message);
+      }
+    } catch (error) {
+      setError('Failed to fetch students');
+      console.error('Error fetching students:', error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
+  // Load students on component mount and when filters change
+  useEffect(() => {
+    fetchStudents();
+  }, [currentPage, pageSize, searchTerm, sortBy, sortOrder]);
+
+  // Handle student deletion
+  const handleDelete = async (studentId) => {
+    if (!window.confirm("Are you sure you want to delete this student?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/students/${studentId}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        fetchStudents(); // Refresh the list
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      alert('Failed to delete student');
+    }
+  };
+
+  // Handle manual Codeforces data refresh
+  const handleRefreshData = async (studentId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/students/${studentId}/sync`, {
+        method: 'POST'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        fetchStudents(); // Refresh the list
+        alert('Codeforces data refreshed successfully');
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      alert('Failed to refresh Codeforces data');
+    }
+  };
+
+  // Handle email reminder toggle
+  const handleToggleEmailReminders = async (studentId, currentStatus) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/students/${studentId}/email-preferences`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          inactivityReminders: !currentStatus
+        })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        fetchStudents(); // Refresh the list
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error('Error updating email preferences:', error);
+      alert('Failed to update email preferences');
+    }
+  };
+
+  // Handle CSV export
+  const handleDownloadCSV = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/students/export-csv');
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'students_export.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to download CSV');
+      }
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+      alert('Failed to download CSV');
+    }
+  };
+
+  // Handle view profile
+  const handleViewProfile = (student) => {
+    setSelectedStudent(student);
+    setShowProfile(true);
+  };
+
+  // Filter students based on status
   const filteredStudents = students.filter(student => {
-    const matchesSearch = 
-      student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.codeforcesHandle.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFilter = filterCourse === "all" || student.course === filterCourse;
-    
-    return matchesSearch && matchesFilter;
+    if (filterStatus === "all") return true;
+    if (filterStatus === "active") return student.isActive;
+    if (filterStatus === "inactive") return !student.isActive;
+    return true;
   });
 
   const getRatingColor = (rating) => {
@@ -142,80 +194,22 @@ function AllData() {
   };
 
   const getInactivityStatus = (lastSubmissionDate) => {
+    if (!lastSubmissionDate) return "inactive";
     const daysSinceLastSubmission = Math.floor((new Date() - new Date(lastSubmissionDate)) / (1000 * 60 * 60 * 24));
     if (daysSinceLastSubmission > 7) return "inactive";
     if (daysSinceLastSubmission > 3) return "warning";
     return "active";
   };
 
-  const handleViewProfile = (student) => {
-    setSelectedStudent(student);
-    setShowProfile(true);
-  };
-
-  const handleEdit = (studentId) => {
-    console.log("Edit student:", studentId);
-    // Navigate to edit student page
-  };
-
-  const handleDelete = (studentId) => {
-    if (window.confirm("Are you sure you want to delete this student?")) {
-      console.log("Delete student:", studentId);
-      // Delete student logic
-    }
-  };
-
-  const handleRefreshData = (studentId) => {
-    console.log("Refresh Codeforces data for student:", studentId);
-    // Trigger real-time Codeforces data fetch
-  };
-
-  const handleToggleEmailReminders = (studentId) => {
-    console.log("Toggle email reminders for student:", studentId);
-    // Toggle email reminders
-  };
-
-  const handleDownloadCSV = () => {
-    const headers = [
-      "ID", "Name", "Email", "Phone", "Course", "Status", 
-      "Codeforces Handle", "Current Rating", "Max Rating", 
-      "Last Updated", "Last Submission", "Reminder Emails Sent"
-    ];
-    
-    const csvContent = [
-      headers.join(","),
-      ...filteredStudents.map(student => [
-        student.id,
-        `${student.firstName} ${student.lastName}`,
-        student.email,
-        student.phone,
-        student.course,
-        student.status,
-        student.codeforcesHandle,
-        student.currentRating,
-        student.maxRating,
-        new Date(student.lastUpdated).toLocaleDateString(),
-        new Date(student.lastSubmissionDate).toLocaleDateString(),
-        student.reminderEmailsSent
-      ].join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "students_data.csv";
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
   const formatLastUpdated = (dateString) => {
+    if (!dateString) return "Never";
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
     
     if (diffInHours < 1) return "Just now";
     if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 48) return "Yesterday";
     return date.toLocaleDateString();
   };
 
@@ -223,9 +217,9 @@ function AllData() {
     return (
       <StudentProfile 
         student={selectedStudent} 
-        onBack={() => setShowProfile(false)}
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onBack={() => setShowProfile(false)} 
+        sidebarOpen={sidebarOpen} 
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} 
       />
     );
   }
@@ -246,60 +240,35 @@ function AllData() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">All Data</h1>
+          <h1 className="text-lg font-semibold">All Students</h1>
           <div className="w-10"></div>
         </div>
 
-        {/* Content */}
+        {/* Main Content */}
         <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Management</h1>
-            <p className="text-gray-600">View and manage all registered students with Codeforces progress</p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <CardTitle>Student Records</CardTitle>
-                  <CardDescription>
-                    Total students: {filteredStudents.length} | 
-                    Last sync: {new Date().toLocaleString()}
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2"
-                    onClick={handleDownloadCSV}
-                  >
-                    <Download className="h-4 w-4" />
-                    Export CSV
-                  </Button>
-                  <Button 
-                    onClick={() => navigate('/add-student')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Add New Student
-                  </Button>
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">All Students</h1>
+                <p className="text-gray-600">Manage and view all enrolled students</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              {/* Search and Filter */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
+              <div className="flex gap-2">
+                <Button onClick={() => navigate('/add-student')} className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Student
+                </Button>
+                <Button variant="outline" onClick={handleDownloadCSV} className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Button>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search by name, email, or Codeforces handle..."
@@ -308,162 +277,185 @@ function AllData() {
                     className="pl-10"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Select value={filterCourse} onValueChange={setFilterCourse}>
-                    <SelectTrigger className="w-[180px]">
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Filter by course" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Courses</SelectItem>
-                      <SelectItem value="Computer Science">Computer Science</SelectItem>
-                      <SelectItem value="Engineering">Engineering</SelectItem>
-                      <SelectItem value="Business Administration">Business Administration</SelectItem>
-                      <SelectItem value="Arts & Humanities">Arts & Humanities</SelectItem>
-                      <SelectItem value="Natural Sciences">Natural Sciences</SelectItem>
-                      <SelectItem value="Medicine">Medicine</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Students</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left p-3 font-medium text-gray-700">Student</th>
-                      <th className="text-left p-3 font-medium text-gray-700">Contact</th>
-                      <th className="text-left p-3 font-medium text-gray-700">Course</th>
-                      <th className="text-left p-3 font-medium text-gray-700">Codeforces</th>
-                      <th className="text-left p-3 font-medium text-gray-700">Rating</th>
-                      <th className="text-left p-3 font-medium text-gray-700">Activity</th>
-                      <th className="text-left p-3 font-medium text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStudents.map((student) => {
-                      const inactivityStatus = getInactivityStatus(student.lastSubmissionDate);
-                      return (
-                        <tr key={student.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3">
+          {/* Students Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Students ({filteredStudents.length})</CardTitle>
+              <CardDescription>
+                Showing {filteredStudents.length} of {students.length} students
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-red-600">{error}</div>
+              ) : filteredStudents.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No students found</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium">Name</th>
+                        <th className="text-left py-3 px-4 font-medium">Email</th>
+                        <th className="text-left py-3 px-4 font-medium">Phone</th>
+                        <th className="text-left py-3 px-4 font-medium">Codeforces Handle</th>
+                        <th className="text-left py-3 px-4 font-medium">Current Rating</th>
+                        <th className="text-left py-3 px-4 font-medium">Max Rating</th>
+                        <th className="text-left py-3 px-4 font-medium">Last Updated</th>
+                        <th className="text-left py-3 px-4 font-medium">Status</th>
+                        <th className="text-left py-3 px-4 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStudents.map((student) => (
+                        <tr key={student._id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4">
                             <div>
-                              <div className="font-medium">{student.firstName} {student.lastName}</div>
-                              <div className="text-sm text-gray-500">ID: {student.id}</div>
-                              <Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>
-                                {student.status}
-                              </Badge>
+                              <div className="font-medium">{student.name}</div>
+                              <div className="text-sm text-gray-500">
+                                {student.emailPreferences.reminderCount} reminders sent
+                              </div>
                             </div>
                           </td>
-                          <td className="p-3">
-                            <div className="text-sm">
-                              <div>{student.email}</div>
-                              <div className="text-gray-500">{student.phone}</div>
-                            </div>
-                          </td>
-                          <td className="p-3 text-gray-700">{student.course}</td>
-                          <td className="p-3">
+                          <td className="py-3 px-4">{student.email}</td>
+                          <td className="py-3 px-4">{student.phoneNumber}</td>
+                          <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">{student.codeforcesHandle}</span>
+                              <span className="font-mono">{student.codeforcesHandle}</span>
+                              <a 
+                                href={`https://codeforces.com/profile/${student.codeforcesHandle}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`font-medium ${getRatingColor(student.currentRating)}`}>
+                              {student.currentRating}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`font-medium ${getRatingColor(student.maxRating)}`}>
+                              {student.maxRating}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 text-gray-400" />
+                              <span className="text-sm">{formatLastUpdated(student.lastDataSync)}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant={getInactivityStatus(student.lastSubmissionDate) === "active" ? "default" : "secondary"}
+                                className={getInactivityStatus(student.lastSubmissionDate) === "inactive" ? "bg-red-100 text-red-800" : ""}
+                              >
+                                {getInactivityStatus(student.lastSubmissionDate)}
+                              </Badge>
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => handleToggleEmailReminders(student._id, student.emailPreferences.inactivityReminders)}
                                 className="h-6 w-6 p-0"
-                                onClick={() => window.open(`https://codeforces.com/profile/${student.codeforcesHandle}`, '_blank')}
                               >
-                                <ExternalLink className="h-3 w-3" />
+                                {student.emailPreferences.inactivityReminders ? (
+                                  <Bell className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <BellOff className="h-3 w-3 text-gray-400" />
+                                )}
                               </Button>
                             </div>
-                            <div className="text-xs text-gray-500">
-                              Updated: {formatLastUpdated(student.lastUpdated)}
-                            </div>
                           </td>
-                          <td className="p-3">
-                            <div className="space-y-1">
-                              <div className={`font-medium ${getRatingColor(student.currentRating)}`}>
-                                {student.currentRating}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                Max: {student.maxRating}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="space-y-1">
-                              <div className={`text-xs ${
-                                inactivityStatus === 'inactive' ? 'text-red-600' :
-                                inactivityStatus === 'warning' ? 'text-orange-600' : 'text-green-600'
-                              }`}>
-                                {inactivityStatus === 'inactive' ? 'Inactive' :
-                                 inactivityStatus === 'warning' ? 'Warning' : 'Active'}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {student.reminderEmailsSent} reminders sent
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-1">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleViewProfile(student)}
                                 className="h-8 w-8 p-0"
-                                title="View Profile"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleRefreshData(student.id)}
+                                onClick={() => handleRefreshData(student._id)}
                                 className="h-8 w-8 p-0"
-                                title="Refresh Data"
+                                title="Refresh Codeforces data"
                               >
                                 <RefreshCw className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleToggleEmailReminders(student.id)}
+                                onClick={() => navigate(`/edit-student/${student._id}`)}
                                 className="h-8 w-8 p-0"
-                                title={student.emailRemindersEnabled ? "Disable Reminders" : "Enable Reminders"}
-                              >
-                                {student.emailRemindersEnabled ? 
-                                  <Bell className="h-4 w-4" /> : 
-                                  <BellOff className="h-4 w-4" />
-                                }
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(student.id)}
-                                className="h-8 w-8 p-0"
-                                title="Edit"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDelete(student.id)}
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                title="Delete"
+                                onClick={() => handleDelete(student._id)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-              {filteredStudents.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No students found matching your criteria.
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-500">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

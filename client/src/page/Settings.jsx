@@ -1,98 +1,206 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { 
-  ArrowLeft, 
-  Save, 
   Settings as SettingsIcon, 
-  Menu,
-  CheckCircle,
-  AlertCircle,
+  Clock, 
+  Mail, 
+  Play, 
+  Pause, 
   RefreshCw,
-  Mail,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Menu,
+  Save,
+  TestTube,
+  Calendar,
   Bell,
-  Clock,
-  Database,
-  Shield,
-  Users
+  Database
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 
 function Settings() {
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settings, setSettings] = useState({
-    // Codeforces Sync Settings
-    autoSyncEnabled: true,
-    syncInterval: "6",
-    lastSyncTime: "2024-01-20T10:30:00Z",
-    syncOnStartup: true,
-    
-    // Email Reminder Settings
-    emailRemindersEnabled: true,
-    reminderFrequency: "7",
-    reminderTime: "09:00",
-    reminderDays: ["monday", "wednesday", "friday"],
-    inactivityThreshold: "7",
-    
-    // System Settings
-    maxStudentsPerPage: "50",
-    enableNotifications: true,
-    dataRetentionDays: "365",
-    backupEnabled: true,
-    backupFrequency: "daily"
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(null);
+  const [cronStatus, setCronStatus] = useState(null);
+  const [emailStats, setEmailStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Form states
+  const [syncSchedule, setSyncSchedule] = useState("0 2 * * *");
+  const [inactivitySchedule, setInactivitySchedule] = useState("0 3 * * *");
+  const [timezone, setTimezone] = useState("UTC");
+  const [saving, setSaving] = useState(false);
 
-  const handleSettingChange = (field, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    setSaveStatus(null);
-
+  // Load cron status and email stats
+  const fetchCronStatus = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log("Settings to save:", settings);
-      
-      // Success
-      setSaveStatus("success");
-      setTimeout(() => {
-        setSaveStatus(null);
-      }, 3000);
-      
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/cron/status');
+      const data = await response.json();
+
+      if (data.success) {
+        setCronStatus(data.data.status);
+        setEmailStats(data.data.emailStats);
+        setSyncSchedule(data.data.schedules.codeforcesSync);
+        setInactivitySchedule(data.data.schedules.inactivityCheck);
+        setTimezone(data.data.schedules.timezone);
+      } else {
+        setError(data.message);
+      }
     } catch (error) {
-      console.error("Error saving settings:", error);
-      setSaveStatus("error");
+      console.error('Error fetching cron status:', error);
+      setError('Failed to fetch system status');
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchCronStatus();
+  }, []);
+
+  // Handle manual sync trigger
   const handleManualSync = async () => {
     try {
-      console.log("Manual sync triggered");
-      // Trigger manual sync logic
+      const response = await fetch('http://localhost:5000/api/cron/trigger/sync', {
+        method: 'POST'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Manual sync completed successfully');
+        fetchCronStatus(); // Refresh status
+      } else {
+        alert(data.message);
+      }
     } catch (error) {
-      console.error("Error during manual sync:", error);
+      console.error('Error triggering manual sync:', error);
+      alert('Failed to trigger manual sync');
     }
   };
 
-  const formatLastSync = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+  // Handle manual inactivity check
+  const handleManualInactivityCheck = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/cron/trigger/inactivity', {
+        method: 'POST'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Manual inactivity check completed successfully');
+        fetchCronStatus(); // Refresh status
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error('Error triggering inactivity check:', error);
+      alert('Failed to trigger inactivity check');
+    }
+  };
+
+  // Handle start/stop cron jobs
+  const handleToggleCronJobs = async (action) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/cron/jobs/${action}`, {
+        method: 'POST'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Cron jobs ${action}ed successfully`);
+        fetchCronStatus(); // Refresh status
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing cron jobs:`, error);
+      alert(`Failed to ${action} cron jobs`);
+    }
+  };
+
+  // Handle schedule updates
+  const handleUpdateSchedules = async () => {
+    try {
+      setSaving(true);
+      
+      // Update sync schedule
+      const syncResponse = await fetch('http://localhost:5000/api/cron/schedule/sync', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ schedule: syncSchedule })
+      });
+      
+      // Update inactivity schedule
+      const inactivityResponse = await fetch('http://localhost:5000/api/cron/schedule/inactivity', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ schedule: inactivitySchedule })
+      });
+
+      const syncData = await syncResponse.json();
+      const inactivityData = await inactivityResponse.json();
+
+      if (syncData.success && inactivityData.success) {
+        alert('Schedules updated successfully');
+        fetchCronStatus(); // Refresh status
+      } else {
+        alert('Failed to update schedules');
+      }
+    } catch (error) {
+      console.error('Error updating schedules:', error);
+      alert('Failed to update schedules');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Test email configuration
+  const handleTestEmail = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/cron/test/email');
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Email test sent successfully');
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error('Error testing email:', error);
+      alert('Failed to test email configuration');
+    }
+  };
+
+  const getStatusIcon = (active) => {
+    return active ? (
+      <CheckCircle className="h-4 w-4 text-green-600" />
+    ) : (
+      <XCircle className="h-4 w-4 text-red-600" />
+    );
+  };
+
+  const getStatusBadge = (active) => {
+    return active ? (
+      <Badge className="bg-green-100 text-green-800">Active</Badge>
+    ) : (
+      <Badge className="bg-red-100 text-red-800">Inactive</Badge>
+    );
+  };
+
+  const formatNextRun = (dateString) => {
+    if (!dateString) return "Not scheduled";
+    return new Date(dateString).toLocaleString();
   };
 
   return (
@@ -115,329 +223,259 @@ function Settings() {
           <div className="w-10"></div>
         </div>
 
-        {/* Content */}
+        {/* Main Content */}
         <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">System Settings</h1>
-            <p className="text-gray-600">Configure system preferences and automation</p>
+            <h1 className="text-3xl font-bold text-gray-900">System Settings</h1>
+            <p className="text-gray-600">Manage cron jobs, email preferences, and system configuration</p>
           </div>
 
-          {/* Save Status */}
-          {saveStatus && (
-            <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
-              saveStatus === "success" 
-                ? "bg-green-50 border border-green-200 text-green-800" 
-                : "bg-red-50 border border-red-200 text-red-800"
-            }`}>
-              {saveStatus === "success" ? (
-                <CheckCircle className="h-5 w-5" />
-              ) : (
-                <AlertCircle className="h-5 w-5" />
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-600">{error}</div>
+          ) : (
+            <div className="space-y-6">
+              {/* Cron Job Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    Cron Job Status
+                  </CardTitle>
+                  <CardDescription>
+                    Monitor and control automated tasks
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Codeforces Sync Job */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">Codeforces Data Sync</h3>
+                          <p className="text-sm text-gray-500">Automatically sync student data from Codeforces</p>
+                        </div>
+                        {cronStatus && getStatusIcon(cronStatus.syncJob.active)}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Status:</span>
+                          {cronStatus && getStatusBadge(cronStatus.syncJob.active)}
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Schedule:</span>
+                          <span className="font-mono">{cronStatus?.syncJob.schedule}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Next Run:</span>
+                          <span>{cronStatus && formatNextRun(cronStatus.syncJob.nextRun)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Inactivity Check Job */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">Inactivity Check</h3>
+                          <p className="text-sm text-gray-500">Check for inactive students and send reminders</p>
+                        </div>
+                        {cronStatus && getStatusIcon(cronStatus.inactivityJob.active)}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Status:</span>
+                          {cronStatus && getStatusBadge(cronStatus.inactivityJob.active)}
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Schedule:</span>
+                          <span className="font-mono">{cronStatus?.inactivityJob.schedule}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Next Run:</span>
+                          <span>{cronStatus && formatNextRun(cronStatus.inactivityJob.nextRun)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Job Controls */}
+                  <div className="flex gap-2 mt-6">
+                    <Button onClick={() => handleToggleCronJobs('start')} className="flex items-center gap-2">
+                      <Play className="h-4 w-4" />
+                      Start All Jobs
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleToggleCronJobs('stop')} 
+                      className="flex items-center gap-2"
+                    >
+                      <Pause className="h-4 w-4" />
+                      Stop All Jobs
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleManualSync} 
+                      className="flex items-center gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Manual Sync
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleManualInactivityCheck} 
+                      className="flex items-center gap-2"
+                    >
+                      <Bell className="h-4 w-4" />
+                      Check Inactivity
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Schedule Configuration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-green-600" />
+                    Schedule Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Configure when automated tasks should run
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="syncSchedule">Codeforces Sync Schedule (Cron Pattern)</Label>
+                        <Input
+                          id="syncSchedule"
+                          value={syncSchedule}
+                          onChange={(e) => setSyncSchedule(e.target.value)}
+                          placeholder="0 2 * * *"
+                          className="font-mono"
+                        />
+                        <p className="text-sm text-gray-500 mt-1">
+                          Format: minute hour day month weekday (e.g., "0 2 * * *" = 2 AM daily)
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="inactivitySchedule">Inactivity Check Schedule (Cron Pattern)</Label>
+                        <Input
+                          id="inactivitySchedule"
+                          value={inactivitySchedule}
+                          onChange={(e) => setInactivitySchedule(e.target.value)}
+                          placeholder="0 3 * * *"
+                          className="font-mono"
+                        />
+                        <p className="text-sm text-gray-500 mt-1">
+                          Format: minute hour day month weekday (e.g., "0 3 * * *" = 3 AM daily)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-6">
+                    <Button 
+                      onClick={handleUpdateSchedules} 
+                      disabled={saving}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      {saving ? 'Saving...' : 'Save Schedules'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Email Statistics */}
+              {emailStats && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-purple-600" />
+                      Email Statistics
+                    </CardTitle>
+                    <CardDescription>
+                      Overview of email reminder system
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{emailStats.totalStudents}</div>
+                        <div className="text-sm text-gray-500">Total Students</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {emailStats.studentsWithRemindersEnabled}
+                        </div>
+                        <div className="text-sm text-gray-500">Reminders Enabled</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600">
+                          {emailStats.studentsWithRemindersDisabled}
+                        </div>
+                        <div className="text-sm text-gray-500">Reminders Disabled</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{emailStats.totalRemindersSent}</div>
+                        <div className="text-sm text-gray-500">Total Reminders Sent</div>
+                      </div>
+                    </div>
+                    <div className="mt-4 text-center">
+                      <div className="text-lg font-medium">
+                        Average: {emailStats.averageRemindersPerStudent} reminders per student
+                      </div>
+                    </div>
+                    <div className="flex justify-center mt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={handleTestEmail} 
+                        className="flex items-center gap-2"
+                      >
+                        <TestTube className="h-4 w-4" />
+                        Test Email Configuration
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-              <span>
-                {saveStatus === "success" 
-                  ? "Settings saved successfully!" 
-                  : "Error saving settings. Please try again."}
-              </span>
+
+              {/* System Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="h-5 w-5 text-gray-600" />
+                    System Information
+                  </CardTitle>
+                  <CardDescription>
+                    Current system configuration and status
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Timezone</Label>
+                      <div className="text-sm text-gray-600">{timezone}</div>
+                    </div>
+                    <div>
+                      <Label>Environment</Label>
+                      <div className="text-sm text-gray-600">
+                        {process.env.NODE_ENV || 'development'}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
-
-          <div className="space-y-6">
-            {/* Codeforces Sync Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <RefreshCw className="h-5 w-5" />
-                  Codeforces Data Sync
-                </CardTitle>
-                <CardDescription>
-                  Configure automatic synchronization with Codeforces
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Enable Auto Sync</Label>
-                    <p className="text-sm text-gray-500">
-                      Automatically sync student data from Codeforces
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.autoSyncEnabled}
-                    onCheckedChange={(checked) => handleSettingChange("autoSyncEnabled", checked)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Sync Interval</Label>
-                    <Select value={settings.syncInterval} onValueChange={(value) => handleSettingChange("syncInterval", value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Every hour</SelectItem>
-                        <SelectItem value="6">Every 6 hours</SelectItem>
-                        <SelectItem value="12">Every 12 hours</SelectItem>
-                        <SelectItem value="24">Daily</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Last Sync</Label>
-                    <Input
-                      value={formatLastSync(settings.lastSyncTime)}
-                      disabled
-                      className="bg-gray-50"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Sync on Startup</Label>
-                    <p className="text-sm text-gray-500">
-                      Sync data when the application starts
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.syncOnStartup}
-                    onCheckedChange={(checked) => handleSettingChange("syncOnStartup", checked)}
-                  />
-                </div>
-
-                <Button
-                  onClick={handleManualSync}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Manual Sync Now
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Email Reminder Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Email Reminders
-                </CardTitle>
-                <CardDescription>
-                  Configure automatic email reminders for inactive students
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Enable Email Reminders</Label>
-                    <p className="text-sm text-gray-500">
-                      Send automatic reminders to inactive students
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.emailRemindersEnabled}
-                    onCheckedChange={(checked) => handleSettingChange("emailRemindersEnabled", checked)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Reminder Frequency</Label>
-                    <Select value={settings.reminderFrequency} onValueChange={(value) => handleSettingChange("reminderFrequency", value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3">Every 3 days</SelectItem>
-                        <SelectItem value="7">Weekly</SelectItem>
-                        <SelectItem value="14">Bi-weekly</SelectItem>
-                        <SelectItem value="30">Monthly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Reminder Time</Label>
-                    <Input
-                      type="time"
-                      value={settings.reminderTime}
-                      onChange={(e) => handleSettingChange("reminderTime", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Inactivity Threshold</Label>
-                  <Select value={settings.inactivityThreshold} onValueChange={(value) => handleSettingChange("inactivityThreshold", value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 days</SelectItem>
-                      <SelectItem value="7">1 week</SelectItem>
-                      <SelectItem value="14">2 weeks</SelectItem>
-                      <SelectItem value="30">1 month</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-gray-500">
-                    Send reminders after this period of inactivity
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* System Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <SettingsIcon className="h-5 w-5" />
-                  System Preferences
-                </CardTitle>
-                <CardDescription>
-                  General system configuration options
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Students per Page</Label>
-                    <Select value={settings.maxStudentsPerPage} onValueChange={(value) => handleSettingChange("maxStudentsPerPage", value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                        <SelectItem value="200">200</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Data Retention</Label>
-                    <Select value={settings.dataRetentionDays} onValueChange={(value) => handleSettingChange("dataRetentionDays", value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="90">90 days</SelectItem>
-                        <SelectItem value="180">6 months</SelectItem>
-                        <SelectItem value="365">1 year</SelectItem>
-                        <SelectItem value="730">2 years</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Enable Notifications</Label>
-                    <p className="text-sm text-gray-500">
-                      Show browser notifications for important events
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.enableNotifications}
-                    onCheckedChange={(checked) => handleSettingChange("enableNotifications", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Automatic Backups</Label>
-                    <p className="text-sm text-gray-500">
-                      Create automatic backups of student data
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.backupEnabled}
-                    onCheckedChange={(checked) => handleSettingChange("backupEnabled", checked)}
-                  />
-                </div>
-
-                {settings.backupEnabled && (
-                  <div className="space-y-2">
-                    <Label>Backup Frequency</Label>
-                    <Select value={settings.backupFrequency} onValueChange={(value) => handleSettingChange("backupFrequency", value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* System Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  System Information
-                </CardTitle>
-                <CardDescription>
-                  Current system status and statistics
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-blue-600">1,234</div>
-                    <div className="text-sm text-gray-600">Total Students</div>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <RefreshCw className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-green-600">24</div>
-                    <div className="text-sm text-gray-600">Syncs Today</div>
-                  </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <Mail className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-purple-600">156</div>
-                    <div className="text-sm text-gray-600">Emails Sent</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Save Button */}
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isSaving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Settings
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
